@@ -67,6 +67,14 @@ Samsung Galaxy S24+ (Snapdragon 8 Gen 3, Adreno 750), Android 16: 60 fps with Me
 Turnip. The phone's own Adreno driver runs the menus but loses the device at some
 scene changes, which is why the app prefers Turnip.
 
+## Support
+
+This app is free and will stay free. If it is useful to you, you can buy me a
+coffee:
+
+- Ko-fi: https://ko-fi.com/YOURNAME
+- PayPal: https://paypal.me/YOURNAME
+
 ## Credits
 
 - [Peanuts Native](https://github.com/igawa6/peanuts-native) by seedds and its
