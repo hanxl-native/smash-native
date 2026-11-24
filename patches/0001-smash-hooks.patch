@@ -1,0 +1,95 @@
+--- a/android/app/src/main/AndroidManifest.xml
++++ b/android/app/src/main/AndroidManifest.xml
+@@ -44,9 +44,10 @@
+             android:excludeFromRecents="true"
+             android:noHistory="true"
+             android:theme="@android:style/Theme.NoDisplay" />
++        <!-- PEANUTS: the app's only screen is the launcher now (MainActivity stays as the in-game panel's Advanced settings) -->
+         <activity
+-            android:name=".MainActivity"
+-            android:theme="@style/Theme.Banana"
++            android:name=".SmashLauncherActivity"
++            android:theme="@android:style/Theme.Material.NoActionBar"
+             android:launchMode="singleTask"
+             android:exported="true"
+             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+@@ -55,6 +56,12 @@
+                 <category android:name="android.intent.category.LAUNCHER" />
+             </intent-filter>
+         </activity>
++        <activity
++            android:name=".MainActivity"
++            android:theme="@style/Theme.Banana"
++            android:launchMode="singleTask"
++            android:exported="false"
++            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+         <!-- Emulator frontends (FRONTENDS.md): reached only by the exported alias <application ID>.Launch (dev.bananative.android/.Launch); draws nothing of its own -->
+         <activity
+             android:name=".FrontendLaunch"
+--- a/android/app/build.gradle
++++ b/android/app/build.gradle
+@@ -306,6 +306,7 @@
+ 
+ android {
+     namespace 'dev.nxnative.android'
++    androidResources { noCompress 'zip' }   // PEANUTS: the game packs an APK carries are already compressed
+     compileSdk 36
+     ndkVersion '28.2.13676358'
+ 
+@@ -324,6 +325,8 @@
+         buildConfigField 'String', 'NX_DIRTY', "\"${commit ? dirty : ''}\""
+         buildConfigField 'String', 'NX_PEANUTS_HANDHELD', "\"$handheldGames\""   // PEANUTS: see handheldGames above
+         buildConfigField 'String', 'NX_PEANUTS_ID', "\"$nxPeanutsId\""   // PEANUTS: see nxPeanutsId above
++        // PEANUTS: this app's own name in the build tag and the log (no "Peanuts Native" line in a game's screen)
++        buildConfigField 'String', 'NX_BRAND', "\"Smash Ultimate Native\""
+         buildConfigField 'boolean', 'NX_LSFG', "$nxLsfg"
+         // The play app and the release behave alike (saves/<id>, the user's build tag, no test switches); every other app is a test app
+         buildConfigField 'boolean', 'NX_PLAY', "${nxPlay || nxLive}"
+@@ -363,6 +366,9 @@
+     buildFeatures { buildConfig true }
+     // The icon's variant badge: a "T" dot on the test app, none on the play app (res/drawable/ic_launcher_badge*.xml)
+     sourceSets {
++        // PEANUTS: this app's own assets and icon (src/<app>/assets, src/<app>/res), only in its APK
++        release { res.srcDirs += 'src/smash/res'; assets.srcDirs += 'src/smash/assets' }
++        debug { res.srcDirs += 'src/smash/res'; assets.srcDirs += 'src/smash/assets' }
+         main {
+             res.srcDirs += nxPlay || nxLive ? 'src/variant-play/res' : 'src/variant-test/res'
+             java.srcDirs += 'src/ondevice/java'
+--- a/android/app/src/main/java/dev/nxnative/android/MainActivity.java
++++ b/android/app/src/main/java/dev/nxnative/android/MainActivity.java
+@@ -293,7 +293,7 @@
+         trailing.addView(dev.peanuts.ui.Library.screensOffButton(this), sop);
+         trailing.addView(headerButtons());
+         // PEANUTS end
+-        content.addView(dev.peanuts.ui.Library.homeHeader(Ui.header(this, Ui.badge(this, 44), "Peanuts Native", Prefs.buildId(), trailing)));   // the build identifier under the title (Prefs.buildId, the part of the overlay's build tag after the app's name), so a screenshot of Home names its build; Settings › About has the full tag   // PEANUTS: rebrand; homeHeader: the build line is no focus stop
++        content.addView(dev.peanuts.ui.Library.homeHeader(Ui.header(this, Ui.badge(this, 44), BuildConfig.NX_BRAND.isEmpty() ? "Peanuts Native" : BuildConfig.NX_BRAND, Prefs.buildId(), trailing)));   // the build identifier under the title (Prefs.buildId, the part of the overlay's build tag after the app's name), so a screenshot of Home names its build; Settings › About has the full tag   // PEANUTS: rebrand; homeHeader: the build line is no focus stop
+         dev.peanuts.ui.BottomScreen.home(this, () -> page(true));   // PEANUTS: bottom screen (dev.peanuts.ui.BottomScreen)
+         accessCard = accessCard();
+         Ui.add(content, accessCard, 16);
+--- a/android/app/src/main/java/dev/nxnative/android/Prefs.java
++++ b/android/app/src/main/java/dev/nxnative/android/Prefs.java
+@@ -589,11 +589,13 @@
+ 
+     /** The build identifier alone (Signer.buildId): "launcher-2@4a15067", "0.1 · 6a6448d". Home shows it under its title (the build tag would not fit a phone's width) */
+     static String buildId() {
++        if (!BuildConfig.NX_BRAND.isEmpty()) return BuildConfig.NX_BRAND;   // a build with its own name (the Darksiders II app) shows nothing of the emulator
+         if (!BuildConfig.NX_PEANUTS_ID.isEmpty()) return BuildConfig.NX_PEANUTS_ID;   // PEANUTS: "peanuts-native-0.1.1" (release), "peanuts-native-0.1.1-dev" (any other build): build.gradle nxPeanutsId
+         return Signer.buildId(BuildConfig.NX_PLAY, BuildConfig.VERSION_NAME, BuildConfig.NX_COMMIT, BuildConfig.NX_DIRTY, BuildConfig.NX_BRANCH);
+     }
+ 
+     private static String buildTag() {
++        if (!BuildConfig.NX_BRAND.isEmpty()) return BuildConfig.NX_BRAND;   // the whole tag is the app's own name
+         if (!BuildConfig.NX_PEANUTS_ID.isEmpty()) return BuildConfig.NX_PEANUTS_ID;   // PEANUTS: the identifier is the whole tag (it names the app)
+         return Signer.buildTag(BuildConfig.NX_PLAY, buildId());
+     }
+--- a/android/app/src/main/java/dev/peanuts/ui/LibrarySettings.java
++++ b/android/app/src/main/java/dev/peanuts/ui/LibrarySettings.java
+@@ -244,7 +244,7 @@
+ 
+     /** Settings › Console › Firmware: a folder of extracted NCAs (the old way), or a firmware .zip with the same NCAs flat inside it (stored
+      * or deflated — users usually have firmware as a zip, not pre-extracted) */
+-    static void pickFirmwareSource(Activity a) {   // also the game sheet's and the first-run card's firmware buttons
++    public static void pickFirmwareSource(Activity a) {   // also the game sheet's and the first-run card's firmware buttons
+         LinearLayout box = new LinearLayout(a);
+         box.setOrientation(LinearLayout.VERTICAL);
+         AlertDialog[] d = new AlertDialog[1];

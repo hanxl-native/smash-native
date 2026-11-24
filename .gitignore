@@ -1,0 +1,15 @@
+*.apk
+*.aab
+*.nup
+*.nsp
+*.xci
+*.nsz
+*.xcz
+prod.keys
+*.keys
+build/
+out/
+.gradle/
+local.properties
+.DS_Store
+peanuts-native/
