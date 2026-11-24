@@ -72,8 +72,7 @@ scene changes, which is why the app prefers Turnip.
 This app is free and will stay free. If it is useful to you, you can buy me a
 coffee:
 
-- Ko-fi: https://ko-fi.com/YOURNAME
-- PayPal: https://paypal.me/YOURNAME
+- Ko-fi: https://ko-fi.com/hanxlnative
 
 ## Credits
 
