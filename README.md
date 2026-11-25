@@ -73,6 +73,7 @@ This app is free and will stay free. If it is useful to you, you can buy me a
 coffee:
 
 - Ko-fi: https://ko-fi.com/hanxlnative
+- PayPal: https://www.paypal.com/donate/?business=nmherrerab%40gmail.com&currency_code=USD
 
 ## Credits
 
