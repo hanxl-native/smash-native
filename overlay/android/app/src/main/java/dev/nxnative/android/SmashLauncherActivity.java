@@ -146,7 +146,7 @@ public final class SmashLauncherActivity extends Activity {
             String error = null;
             try {
                 File pack = packDir();
-                if (!new File(pack, "pack.tsv").isFile()) {
+                if (!new File(pack, "pack.tsv").isFile() && hasAsset(ASSETS + "/pack.zip")) {
                     say("Copying the game data into the app (one time)…", 0);
                     File parent = pack.getParentFile();
                     if (parent != null && !parent.isDirectory() && !parent.mkdirs()) throw new IOException("cannot create " + parent);
@@ -186,6 +186,11 @@ public final class SmashLauncherActivity extends Activity {
                 if (after != null) after.run();
             });
         }, "smash-prepare").start();
+    }
+
+    /** True when this build carries the asset: a public build has no pack.zip, and the PACK card imports the one the PC tool makes */
+    private boolean hasAsset(String path) {
+        try (InputStream in = getAssets().open(path)) { return true; } catch (IOException e) { return false; }
     }
 
     /** Mesa Turnip, when it is installed and the player has not chosen a driver: the phone's own Adreno driver loses the device at scene changes. */
@@ -905,9 +910,13 @@ public final class SmashLauncherActivity extends Activity {
     private void play() {
         if (importing) { toast("The import is still running"); return; }
         if (preparing) { toast("Still preparing the game data"); return; }
-        if (basePath() != null || updatePath() != null) { build(); return; }
+        if (basePath() != null) { build(); return; }   // only a picked base starts a build; a staged update/DLC never takes PLAY away from a ready .nup
         if (!gameFile().isFile()) { toast("Choose the game file first (.nup, .nsp or .xci)"); pickGameFile(); return; }
-        if (!new File(packDir(), "pack.tsv").isFile()) { toast("The game data is not ready: opening it again"); prepare(null); return; }
+        if (!new File(packDir(), "pack.tsv").isFile()) {
+            toast("Import the pack first: PACK → the pack.zip the PC tool makes");
+            pickPack();
+            return;
+        }
         writeEnv();
         Intent i = new Intent(this, GameActivity.class)
                 .putExtra("title_id", TITLE_ID)
@@ -1031,14 +1040,14 @@ public final class SmashLauncherActivity extends Activity {
         String fw = PeanutsPrefs.firmwareDir(this);   // set only when the player added a firmware; the APK's stand-in fonts are not one
         firmwareValue.setText(fw != null ? "Firmware added" + (fw.length() < 42 ? " · " + fw : "") : "Stand-in fonts — add your firmware (.zip or folder)");
         firmwareValue.setTextColor(fw != null ? TEXT : ACCENT);
-        boolean canBuild = base != null && upd != null;
+        boolean canBuild = base != null;   // a picked base is build mode: build() asks for the 13.0.5 update if it is not in yet
         boolean pack = new File(packDir(), "pack.tsv").isFile();
         packValue.setText(pack ? "Ready" : "Not added — tap to import a .zip");
         packValue.setTextColor(pack ? TEXT : ACCENT);
         boolean ready = !preparing && !importing && (canBuild || (nup && pack));
         if (playCard != null) playCard.setAlpha(ready ? 1f : 0.45f);
         if (playLabel != null) playLabel.setText(importing ? "IMPORTING…" : canBuild ? (nup ? "REBUILD GAME FILE" : "BUILD GAME FILE")
-                : nup ? (pack ? "PLAY" : "PREPARING…") : "CHOOSE THE GAME FILE");
+                : nup ? (pack ? "PLAY" : "IMPORT THE PACK") : "CHOOSE THE GAME FILE");
     }
 
     private TextView label(String text, int sp, int color, boolean bold) {

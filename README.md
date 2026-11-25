@@ -11,6 +11,14 @@ the icon are this repository's. The runtime underneath is
 part of running the game's code and graphics (see [Credits](#credits)); the app
 shows its own name and art, not the runtime's.
 
+## Download
+
+[**SmashUltimate-Native-v1.0.apk**](https://github.com/hanxl-native/smash-native/releases/latest) — 19 MB, Android 13+.
+
+The APK carries the app only: no game, no pack, no keys, no firmware. Get those
+from your own dump with the **[PC pack builder](https://github.com/hanxl-native/pack-builder)**
+(route A) or build them on the phone (route B).
+
 ## What this app adds
 
 | | |
@@ -57,9 +65,10 @@ your phone.
 
 ## Play it — route A (with a PC, recommended)
 
-1. On the PC, in this repository's [`tools/`](tools/BUILD-PACK.md), run
-   `build-pack.cmd` (Windows) or `build-pack.sh` with your game, the update and
-   the DLC. It makes **two files**: `SmashUltimate.nup` and `pack.zip`.
+1. On the PC, download the **[PC pack builder](https://github.com/hanxl-native/pack-builder)**
+   (latest release) and run `build-pack.cmd` (Windows) or `build-pack.sh` with
+   your game, the 13.0.5 update and the DLC. It makes **two files**:
+   `SmashUltimate.nup` and `pack.zip`.
 2. Copy both to the phone (USB, SD card or cloud).
 3. Open the app → **PACK** → choose `pack.zip`; the card shows **Ready**.
 4. **GAME FILE** → choose `SmashUltimate.nup` → **Move into the app** → wait a
