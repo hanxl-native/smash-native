@@ -13,7 +13,7 @@ shows its own name and art, not the runtime's.
 
 ## Download
 
-[**SmashUltimate-Native-v1.0.apk**](https://github.com/hanxl-native/smash-native/releases/latest) — 19 MB, Android 13+.
+[**SmashUltimate-Native-v1.1.apk**](https://github.com/hanxl-native/smash-native/releases/latest) — 19 MB, Android 13+.
 
 The APK carries the app only: no game, no pack, no keys, no firmware. Get those
 from your own dump with the **[PC pack builder](https://github.com/hanxl-native/pack-builder)**
@@ -87,8 +87,8 @@ update and the DLC, and the pack holds the shaders.
 4. **UPDATE (13.0.5)** → the update file. Anything but `v2031616` is refused with
    the version it found.
 5. **DLC** *(optional)* → the add-on `.nsp` files; you can select many at once.
-   The on-phone importer takes at most **64 files** per build: the base, the
-   update and the full 99 DLC are 101, so for **all** the DLC use the PC tool.
+   The on-phone importer takes up to **256 files** (v1.1): the base, the update
+   and the full 99 DLC are 101 and fit.
 6. **BUILD GAME FILE** → confirm the space, then wait. This is the slow part:
    **hours on a phone** — leave it charging. You can cancel.
 7. **PLAY**.

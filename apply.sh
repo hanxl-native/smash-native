@@ -10,6 +10,7 @@ if [ ! -d "$DIR" ]; then
     git clone --depth 1 --branch "$TAG" https://github.com/igawa6/peanuts-native "$DIR"
 fi
 git -C "$DIR" apply "$HERE/patches/0001-smash-hooks.patch"
+git -C "$DIR" apply "$HERE/patches/0002-256-inputs.patch"
 cp -R "$HERE/overlay/." "$DIR/"
 
 echo "Ready: $DIR"

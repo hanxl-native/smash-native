@@ -1,0 +1,52 @@
+diff --git a/dm/peanuts/import/nximport.c b/dm/peanuts/import/nximport.c
+index b8ea45f..28357b6 100644
+--- a/dm/peanuts/import/nximport.c
++++ b/dm/peanuts/import/nximport.c
+@@ -96,9 +96,9 @@ typedef struct Pkg {
+ } Pkg;
+ typedef struct Src { NxContainer c; NxTitle *ts; int n; } Src;
+ typedef struct Job {
+-    Pkg pk[64]; int npk;
+-    NxNca ncas[192]; int nncas;   // every NCA the trees read from (kept open: nodes point at them)
+-    NxNcz *ncz[192];              // ncz[i]: the NCZ ncas[i] is read from (an NSZ's or XCZ's), else NULL
++    Pkg pk[256]; int npk;
++    NxNca ncas[1024]; int nncas;   // every NCA the trees read from (kept open: nodes point at them)
++    NxNcz *ncz[1024];              // ncz[i]: the NCZ ncas[i] is read from (an NSZ's or XCZ's), else NULL
+     char tmp[1200];               // where solid NCZs are unpacked: a hidden folder beside the .nup
+     long long prep_total, prep_done, prep_said; char prep_step[300];   // unpacking and checking the NCZs, before the trees: their own progress
+     NxNode **dirs; uint32_t nd, dcap; NxNode **files; uint32_t nf, fcap; const char **step; // step[file id]
+@@ -179,7 +179,7 @@ static int job_ncz_bytes(const NxTitle *t, const char *id, uint64_t *sum) {
+ }
+ 
+ static int add_pkg(Job *j, const NxTitle *t, int kind, uint64_t tid, uint32_t ver, NxNode *exefs, NxNode *romfs) {
+-    if (j->npk >= 64) { nx_err("too many packages"); return -1; }
++    if (j->npk >= 256) { nx_err("too many packages"); return -1; }
+     Pkg *p = &j->pk[j->npk]; memset(p, 0, sizeof *p); p->t = t; p->kind = kind; p->tid = tid; p->ver = ver;
+     if (!(p->root = nx_node_new("", 0, 1))) { nx_err("out of memory"); return -1; }
+     if (exefs) { free(exefs->name); exefs->name = strdup("exefs"); if (!nx_node_add(p->root, exefs)) return -1; }
+@@ -548,7 +548,7 @@ int nximport_write_nup(const char *out_nup, const char **inputs, int n_inputs, c
+     Src *src = NULL; Job *j = NULL; int rc = -1; uint64_t base_tid;
+     if (!nx_keys.loaded) { nx_err("keys not loaded (nximport_keys)"); return -1; }
+     if (parse_tid(base_title_id, &base_tid)) { nx_err("bad base title id %s", base_title_id ? base_title_id : "(null)"); return -1; }
+-    if (n_inputs < 1 || n_inputs > 64) { nx_err("1 to 64 inputs"); return -1; }
++    if (n_inputs < 1 || n_inputs > 256) { nx_err("1 to 256 inputs"); return -1; }
+     if (!(src = calloc((size_t)n_inputs, sizeof *src)) || !(j = calloc(1, sizeof *j))) { nx_err("out of memory"); goto out; }
+     for (int i = 0; i < n_inputs; i++) src[i].c.fd = -1;
+     j->progress = progress; j->user = user;
+@@ -562,13 +562,13 @@ int nximport_write_nup(const char *out_nup, const char **inputs, int n_inputs, c
+     { const char *td = getenv("NXIMPORT_TMPDIR"), *sl = strrchr(out_nup, '/'), *bs = strrchr(out_nup, '\\'); if (bs && (!sl || bs > sl)) sl = bs;
+       if (td && *td) snprintf(j->tmp, sizeof j->tmp, "%s", td);
+       else snprintf(j->tmp, sizeof j->tmp, "%.*s.%s.unpack", sl ? (int)(sl - out_nup + 1) : 0, out_nup, sl ? sl + 1 : out_nup); }
+-    { uint64_t sum = 0; uint32_t vers[64]; uint64_t aoc[64]; int nv = 0, na = 0;
++    { uint64_t sum = 0; uint32_t vers[256]; uint64_t aoc[256]; int nv = 0, na = 0;
+       if (base && job_ncz_bytes(base, base->program, &sum)) goto out;
+       for (int pass = 0; pass < 2; pass++) for (int i = 0; i < n_inputs; i++) for (int k = 0; k < src[i].n; k++) {
+           const NxTitle *t = &src[i].ts[k]; int dup = 0;
+           if (t->app_id != base_tid || t->kind != (pass ? 2 : 1)) continue;
+-          if (t->kind == 1) { for (int q = 0; q < nv; q++) dup |= vers[q] == t->version; if (dup || nv == 64) continue; vers[nv++] = t->version; if (job_ncz_bytes(t, t->program, &sum)) goto out; }
+-          else { for (int q = 0; q < na; q++) dup |= aoc[q] == t->title_id; if (dup || na == 64) continue; aoc[na++] = t->title_id; if (job_ncz_bytes(t, t->data, &sum)) goto out; }
++          if (t->kind == 1) { for (int q = 0; q < nv; q++) dup |= vers[q] == t->version; if (dup || nv == 256) continue; vers[nv++] = t->version; if (job_ncz_bytes(t, t->program, &sum)) goto out; }
++          else { for (int q = 0; q < na; q++) dup |= aoc[q] == t->title_id; if (dup || na == 256) continue; aoc[na++] = t->title_id; if (job_ncz_bytes(t, t->data, &sum)) goto out; }
+       }
+       j->prep_total = (long long)sum; }
+     if (base) {
