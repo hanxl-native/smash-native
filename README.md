@@ -87,6 +87,8 @@ update and the DLC, and the pack holds the shaders.
 4. **UPDATE (13.0.5)** → the update file. Anything but `v2031616` is refused with
    the version it found.
 5. **DLC** *(optional)* → the add-on `.nsp` files; you can select many at once.
+   The on-phone importer takes at most **64 files** per build: the base, the
+   update and the full 99 DLC are 101, so for **all** the DLC use the PC tool.
 6. **BUILD GAME FILE** → confirm the space, then wait. This is the slow part:
    **hours on a phone** — leave it charging. You can cancel.
 7. **PLAY**.
