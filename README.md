@@ -14,15 +14,74 @@ which does the hard part of running the game's code and graphics (see
 
 | | |
 |---|---|
-| **One screen** | The game file, the update, the DLC, the GPU driver, the picture scale, the saves, the console's keys and firmware. No emulator menus. |
+| **One screen** | The game file, the update, the DLC, the pack, the GPU driver, the picture scale, the saves, the console's keys and firmware. No emulator menus. |
 | **Builds the `.nup` in the app** | Pick the game's own `.nsp`/`.xci`, the update and any number of DLC packs; `BUILD GAME FILE` merges them into one `.nup` with the importer that ships in the APK. |
 | **The right update, checked** | The update card reads the file's CNMT and refuses anything but **13.0.5 (v2031616)**, the version this app and its shader pack are made for. |
 | **Your keys, your firmware** | The APK carries no `prod.keys` and no console font. `KEYS` takes your own `prod.keys`; `FIRMWARE` takes your firmware folder or `.zip` and reads the shared fonts from it. Stand-in fonts (Noto, Droid) keep the game working before that. |
+| **Imports the pack** | The `PACK` card takes the code and shader data the runtime needs as a `.zip` (made on a PC, see below) and shows **Ready** once it is in place. |
 | **Turnip, picked for you** | Mesa Turnip is selected automatically when it is installed; the phone's own Adreno driver loses the device at some scene changes. The GPU driver card installs a driver zip or goes back to the system one. |
 | **Saves** | Export and import as a zip. |
 | **An icon of its own** | SMASH / ULTIMATE, drawn for this project (no Nintendo art). |
 
-## How it is put together
+## What you need
+
+The app plays from **two files**: the `.nup` (the game) and the **pack** (the code
+and shaders the runtime needs). You can make both **on a PC** (route A) or **on
+the phone** (route B).
+
+Common to both routes:
+
+- an Android 13+ phone with **8 GB of RAM or more** (a Snapdragon 8 Gen 2/3 class device);
+- **your own copy of the game** (a dump of the card you own), `.xci` or `.nsp`;
+- the **13.0.5 update** (`v2031616`) — the app and its shaders are made for it;
+- your console's **`prod.keys`**;
+- the **DLC** packs, if you want them (there are 52);
+- your **save** as a `.zip`, if you want to bring one.
+
+| | **A — with a PC** (recommended) | **B — phone only** |
+|---|---|---|
+| A computer | Windows with WSL2, Linux or macOS | — |
+| `prod.keys` on | the PC | the phone |
+| Firmware | not needed | optional (console fonts; stand-in fonts otherwise) |
+| Who builds the pack | the PC tool | the app |
+| Time | ~1.5–2 h on the PC, then minutes | **3–6 h** on the phone |
+
+Nothing is uploaded anywhere: the tools run on your machine and the files stay on
+your phone.
+
+## Play it — route A (with a PC, recommended)
+
+1. On the PC, in this repository's [`tools/`](tools/BUILD-PACK.md), run
+   `build-pack.cmd` (Windows) or `build-pack.sh` with your game, the update and
+   the DLC. It makes **two files**: `SmashUltimate.nup` and `pack.zip`.
+2. Copy both to the phone (USB, SD card or cloud).
+3. Open the app → **PACK** → choose `pack.zip`; the card shows **Ready**.
+4. **GAME FILE** → choose `SmashUltimate.nup` → **Move into the app** → wait a
+   few minutes (17 GB).
+5. **PLAY**.
+
+No keys or firmware on the phone with this route: the `.nup` already holds the
+update and the DLC, and the pack holds the shaders.
+
+## Play it — route B (all on the phone)
+
+1. **KEYS** → your `prod.keys`. Without it the app cannot read the game files.
+2. **FIRMWARE** *(optional)* → your firmware `.zip` or folder, for the console's
+   own fonts. Skipping it is fine.
+3. **GAME FILE** → the base `.xci`/`.nsp`. It is only read for now.
+4. **UPDATE (13.0.5)** → the update file. Anything but `v2031616` is refused with
+   the version it found.
+5. **DLC** *(optional)* → the add-on `.nsp` files; you can select many at once.
+6. **BUILD GAME FILE** → confirm the space, then wait. This is the slow part:
+   **hours on a phone** — leave it charging. You can cancel.
+7. **PLAY**.
+
+## Your save
+
+**SAVES** → choose a `.zip` to restore a save; the same card exports the current
+one as a `.zip`. The save is kept in the app's folder, so it survives updates.
+
+## Build the app from source
 
 The app is an **overlay** on Peanuts Native `v0.1.7-1`. Two pieces:
 
@@ -32,18 +91,7 @@ The app is an **overlay** on Peanuts Native `v0.1.7-1`. Two pieces:
 - `overlay/` — the screen (`SmashLauncherActivity`), the icons and the
   redistributable fonts.
 
-`apply.sh` clones the release, copies the overlay in and applies the patch. The
-app's own code is about a thousand lines of Java in this repository; the runtime
-is upstream's.
-
-## Requirements
-
-- Android 13+ and 8 GB of RAM or more (a Snapdragon 8 Gen 2/3 class phone).
-- **Your own copy of the game** (a dump of the card you own) and your console's
-  `prod.keys` to build from `.nsp`/`.xci`.
-- No game data is included in this repository or in its releases.
-
-## Build
+`apply.sh` clones the release, copies the overlay in and applies the patch.
 
 ```sh
 ./apply.sh                 # clones upstream at v0.1.7-1, copies the overlay, applies the patch
@@ -57,21 +105,9 @@ JAVA_HOME=/path/to/jdk17 ANDROID_HOME=/path/to/android-sdk \
 Needs `git`, JDK 17 and the Android SDK (build-tools, NDK 28.2). The first build
 compiles the native host and takes a few minutes.
 
-### The game data pack
-
-The `.nup` is the game; the **pack** is the code and shader data the runtime needs
-next to it (`files/packs/01006A800016E000/`). It is built from the game with
-Peanuts Native's **Prepare** (on a computer or on the phone), and it is not
-distributed here.
-
-The app's **PACK** card imports a `.zip` of that folder — `pack.tsv` at the root,
-so zip the folder's contents, not the folder itself — and extracts it into
-`files/packs/01006A800016E000/`; the card shows **Ready** once it is in place. A
-build of your own can also carry `assets/smash/pack.zip`, which the app copies on
-first start.
-
-For the whole thing on a PC — the `.nup` merged from your game, update and DLC,
-and `pack.zip`, in one command — see [`tools/BUILD-PACK.md`](tools/BUILD-PACK.md).
+A build of your own can carry `assets/smash/pack.zip` (the pack, copied on first
+start) and then the PACK card is not needed; a public build must not carry it —
+the pack holds the game's own translated shaders.
 
 ## Tested on
 
