@@ -13,8 +13,10 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
+import android.system.Os;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -287,7 +289,16 @@ public final class SmashLauncherActivity extends Activity {
         return out;
     }
 
-    private void clearSources() { prefs().edit().remove("base_path").remove("update_path").remove("dlc_paths").commit(); }
+    private void clearSources() {
+        dropCached(basePath()); dropCached(updatePath());
+        for (String p : dlcPaths()) dropCached(p);
+        prefs().edit().remove("base_path").remove("update_path").remove("dlc_paths").commit();
+    }
+
+    /** Deletes what the app copied into its cache for a piece it no longer uses (the copies are only a fallback for providers without a plain file) */
+    private void dropCached(String path) {
+        if (path != null && path.startsWith(getCacheDir().getPath() + File.separator)) new File(path).delete();
+    }
 
     /** A path the importer can open: the picked file's own when the app may read it, else a copy in the cache (kept until the build) */
     private String localCopy(Uri uri, String name) throws IOException {
@@ -333,7 +344,7 @@ public final class SmashLauncherActivity extends Activity {
             ui.post(() -> {
                 showBusy(false, null, 0);
                 if (err != null) new AlertDialog.Builder(this).setTitle("The game file could not be read").setMessage(err).setPositiveButton("OK", null).show();
-                else { prefs().edit().putString("base_path", path).commit(); refresh(); }
+                else { String old = basePath(); prefs().edit().putString("base_path", path).commit(); if (!path.equals(old)) dropCached(old); refresh(); }
             });
         }, "smash-base").start();
     }
@@ -357,7 +368,7 @@ public final class SmashLauncherActivity extends Activity {
             ui.post(() -> {
                 showBusy(false, null, 0);
                 if (err != null) new AlertDialog.Builder(this).setTitle("The update was not added").setMessage(err).setPositiveButton("OK", null).show();
-                else { prefs().edit().putString("update_path", path).commit(); refresh(); }
+                else { String old = updatePath(); prefs().edit().putString("update_path", path).commit(); if (!path.equals(old)) dropCached(old); refresh(); }
             });
         }, "smash-update").start();
     }
@@ -387,7 +398,12 @@ public final class SmashLauncherActivity extends Activity {
             ui.post(() -> {
                 showBusy(false, null, 0);
                 if (err != null) new AlertDialog.Builder(this).setTitle("The DLC was not added").setMessage(err).setPositiveButton("OK", null).show();
-                else { prefs().edit().putString("dlc_paths", String.join("\n", list)).putLong("dlc_bytes", total).commit(); refresh(); }
+                else {
+                    java.util.List<String> before = dlcPaths();
+                    prefs().edit().putString("dlc_paths", String.join("\n", list)).putLong("dlc_bytes", total).commit();
+                    for (String p : before) if (!list.contains(p)) dropCached(p);
+                    refresh();
+                }
             });
         }, "smash-dlc").start();
     }
@@ -1147,16 +1163,44 @@ public final class SmashLauncherActivity extends Activity {
     }
 
     /** The real /storage path behind a documents provider's URI, or null when it has none (then the copy goes through the resolver) */
-    private static String realPath(Uri uri) {
+    private String realPath(Uri uri) { return realPath(uri, displayName(uri)); }
+
+    private String realPath(Uri uri, String name) {
         if ("file".equals(uri.getScheme())) return uri.getPath();
-        if (!"content".equals(uri.getScheme()) || !"com.android.externalstorage.documents".equals(uri.getAuthority())) return null;
+        if (!"content".equals(uri.getScheme())) return null;
         try {
-            String id = DocumentsContract.getDocumentId(uri);   // "primary:Roms/SmashUltimate.nup"
-            String[] parts = id.split(":", 2);
-            if (parts.length != 2) return null;
-            String base = "primary".equalsIgnoreCase(parts[0]) ? Environment.getExternalStorageDirectory().getPath() : "/storage/" + parts[0];
-            return base + "/" + parts[1];
-        } catch (RuntimeException e) { return null; }
+            String id = DocumentsContract.getDocumentId(uri);   // "primary:Roms/SmashUltimate.nup" (Files) or "raw:/storage/…" (Downloads)
+            if ("com.android.externalstorage.documents".equals(uri.getAuthority())) {
+                String[] parts = id.split(":", 2);
+                if (parts.length == 2) {
+                    String base = "primary".equalsIgnoreCase(parts[0]) ? Environment.getExternalStorageDirectory().getPath() : "/storage/" + parts[0];
+                    String p = base + "/" + parts[1];
+                    if (new File(p).isFile()) return p;
+                }
+            }
+            if (id.startsWith("raw:")) {
+                String p = id.substring(4);
+                if (new File(p).isFile()) return p;
+            }
+            if ("com.android.providers.downloads.documents".equals(uri.getAuthority()) && name != null && !name.isEmpty()) {
+                File f = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), name);   // the Downloads root lists that folder
+                if (f.isFile()) return f.getPath();
+            }
+        } catch (Throwable ignored) { }
+        return fdPath(uri);   // anything else that keeps a plain file (the Downloads provider: "msf:<id>")
+    }
+
+    /** The file behind a content:// URI, asked to the descriptor itself (null when the provider keeps no plain file) */
+    private String fdPath(Uri uri) {
+        try (ParcelFileDescriptor fd = getContentResolver().openFileDescriptor(uri, "r")) {
+            if (fd == null) return null;
+            String link = Os.readlink("/proc/self/fd/" + fd.getFd());
+            int cut = link == null ? -1 : link.indexOf(" (deleted)");
+            if (cut > 0) link = link.substring(0, cut);
+            if (link == null || !link.startsWith("/")) return null;
+            if (link.startsWith("/data/media/")) link = "/storage/emulated/" + link.substring("/data/media/".length());
+            return new File(link).isFile() ? link : null;
+        } catch (Throwable e) { return null; }
     }
 
     private String displayName(Uri uri) {

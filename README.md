@@ -5,10 +5,11 @@
 **Super Smash Bros. Ultimate** on an Android phone: 60 fps, update 13.0.5 and the
 52 DLC packs, from one app with one button.
 
-This is the app: the screen, the game setup, the build flow and the icon are this
-repository's. The runtime underneath is [Peanuts Native](https://github.com/igawa6/peanuts-native),
-which does the hard part of running the game's code and graphics (see
-[Credits](#credits)).
+This is the app: the screen, the game setup, the build flow, the startup screen and
+the icon are this repository's. The runtime underneath is
+[Peanuts Native](https://github.com/igawa6/peanuts-native), which does the hard
+part of running the game's code and graphics (see [Credits](#credits)); the app
+shows its own name and art, not the runtime's.
 
 ## What this app adds
 
@@ -21,7 +22,12 @@ which does the hard part of running the game's code and graphics (see
 | **Imports the pack** | The `PACK` card takes the code and shader data the runtime needs as a `.zip` (made on a PC, see below) and shows **Ready** once it is in place. |
 | **Turnip, picked for you** | Mesa Turnip is selected automatically when it is installed; the phone's own Adreno driver loses the device at some scene changes. The GPU driver card installs a driver zip or goes back to the system one. |
 | **Saves** | Export and import as a zip. |
-| **An icon of its own** | SMASH / ULTIMATE, drawn for this project (no Nintendo art). |
+| **Its own look** | The badge, the cards and the startup screen are this project's; no emulator name or art on any screen. |
+
+The first start on a new GPU driver prepares the shaders (a few minutes). That
+screen is the app's own too: the game's cover, the progress and the driver.
+
+![startup](docs/smash-startup.png)
 
 ## What you need
 
@@ -87,7 +93,8 @@ The app is an **overlay** on Peanuts Native `v0.1.7-1`. Two pieces:
 
 - `patches/0001-smash-hooks.patch` — turns the upstream launcher into this app:
   the single screen becomes the launcher, the build gets the app's name and its
-  assets folder, and the firmware picker is made public.
+  assets folder, the startup screen drops the runtime's art for a named build,
+  and the firmware picker is made public.
 - `overlay/` — the screen (`SmashLauncherActivity`), the icons and the
   redistributable fonts.
 
