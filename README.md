@@ -70,6 +70,9 @@ so zip the folder's contents, not the folder itself — and extracts it into
 build of your own can also carry `assets/smash/pack.zip`, which the app copies on
 first start.
 
+For the whole thing on a PC — the `.nup` merged from your game, update and DLC,
+and `pack.zip`, in one command — see [`tools/BUILD-PACK.md`](tools/BUILD-PACK.md).
+
 ## Tested on
 
 Samsung Galaxy S24+ (Snapdragon 8 Gen 3, Adreno 750), Android 16: 60 fps with Mesa
