@@ -64,13 +64,13 @@ public final class SmashLauncherActivity extends Activity {
 
     private static final String ASSETS = "smash";   // assets/smash/: pack.zip, fonts/, keys/, icon.png
     private static final String PREFS = "smash_launcher";
-    private static final int REQ_NUP = 1, REQ_DRIVER = 2, REQ_SAVE_OUT = 3, REQ_SAVE_IN = 4, REQ_UPDATE = 5, REQ_DLC = 6;
+    private static final int REQ_NUP = 1, REQ_DRIVER = 2, REQ_SAVE_OUT = 3, REQ_SAVE_IN = 4, REQ_UPDATE = 5, REQ_DLC = 6, REQ_PACK = 7;
 
     private static final int BG = 0xFF0B0B10, CARD = 0xFF17171F, TEXT = 0xFFF2F2F5, DIM = 0xFF9A9AA6, ACCENT = 0xFFC8322B;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
 
-    private TextView gameValue, updateValue, dlcValue, driverValue, pictureValue, savesValue, keysValue, firmwareValue, status, playLabel, cancelLink;
+    private TextView gameValue, updateValue, dlcValue, packValue, driverValue, pictureValue, savesValue, keysValue, firmwareValue, status, playLabel, cancelLink;
     private ProgressBar progress;
     private View playCard;
     private volatile boolean preparing;
@@ -215,6 +215,48 @@ public final class SmashLauncherActivity extends Activity {
         status.setVisibility(on || text != null ? View.VISIBLE : View.GONE);
         if (text != null) status.setText(text);
         if (on) { progress.setIndeterminate(percent <= 0); if (percent > 0) progress.setProgress(percent); }
+    }
+
+    // ---- the game data pack (never distributed: the player's own, zipped) ----
+
+    /** A .zip of a pack folder (pack.tsv at its root), extracted into files/packs/<title id> */
+    private void pickPack() {
+        startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+                .putExtra(Intent.EXTRA_MIME_TYPES, new String[] {"application/zip", "application/x-zip-compressed", "application/octet-stream"})
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), REQ_PACK);
+    }
+
+    private void packPicked(Uri uri) {
+        if (preparing || importing) { toast("Wait for the current job to finish"); return; }
+        preparing = true;
+        showBusy(true, "Reading the pack…", 0);
+        new Thread(() -> {
+            String error = null;
+            File tmp = new File(packDir().getParentFile(), TITLE_ID + ".pack.tmp");
+            try {
+                File parent = packDir().getParentFile();
+                if (parent != null && !parent.isDirectory() && !parent.mkdirs()) throw new IOException("cannot create " + parent);
+                deleteTree(tmp);
+                if (!tmp.mkdirs()) throw new IOException("cannot create " + tmp);
+                try (InputStream in = getContentResolver().openInputStream(uri)) {
+                    if (in == null) throw new IOException("cannot open the picked file");
+                    unzipStream(in, tmp, this::sayProgress);
+                }
+                if (!new File(tmp, "pack.tsv").isFile()) throw new IOException("that .zip has no pack.tsv at its root: zip the pack folder's contents, not the folder itself");
+                deleteTree(packDir());
+                if (!tmp.renameTo(packDir())) throw new IOException("cannot move the pack into place");
+            } catch (Throwable e) {
+                error = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                deleteTree(tmp);
+            }
+            final String err = error;
+            ui.post(() -> {
+                preparing = false;
+                showBusy(false, null, 0);
+                toast(err != null ? "The pack could not be added: " + err : "Pack ready");
+                refresh();
+            });
+        }, "pack").start();
     }
 
     // ---- the game file ----
@@ -890,6 +932,7 @@ public final class SmashLauncherActivity extends Activity {
         gameValue = card(box, "GAME FILE", "Not chosen", this::pickGameFile);
         updateValue = card(box, "UPDATE (13.0.5)", "—", this::pickUpdate);
         dlcValue = card(box, "DLC", "—", this::pickDlc);
+        packValue = card(box, "PACK", "—", this::pickPack);
         driverValue = card(box, "GPU DRIVER", "—", this::driverDialog);
         pictureValue = card(box, "GRAPHICS", "—", this::pictureDialog);
         savesValue = card(box, "SAVES", "—", this::savesDialog);
@@ -974,6 +1017,8 @@ public final class SmashLauncherActivity extends Activity {
         firmwareValue.setTextColor(fw != null ? TEXT : ACCENT);
         boolean canBuild = base != null && upd != null;
         boolean pack = new File(packDir(), "pack.tsv").isFile();
+        packValue.setText(pack ? "Ready" : "Not added — tap to import a .zip");
+        packValue.setTextColor(pack ? TEXT : ACCENT);
         boolean ready = !preparing && !importing && (canBuild || (nup && pack));
         if (playCard != null) playCard.setAlpha(ready ? 1f : 0.45f);
         if (playLabel != null) playLabel.setText(importing ? "IMPORTING…" : canBuild ? (nup ? "REBUILD GAME FILE" : "BUILD GAME FILE")
@@ -1137,6 +1182,7 @@ public final class SmashLauncherActivity extends Activity {
         if (dev.peanuts.ui.LibrarySettings.result(this, req, res, data)) { refresh(); ui.postDelayed(this::refresh, 4000); return; }
         if (res != RESULT_OK || data == null) return;
         if (req == REQ_DLC) { dlcPicked(data); return; }
+        if (req == REQ_PACK && data.getData() != null) { packPicked(data.getData()); return; }
         if (data.getData() == null) return;
         Uri uri = data.getData();
         if (req == REQ_NUP) askGameFile(uri);

@@ -62,8 +62,13 @@ compiles the native host and takes a few minutes.
 The `.nup` is the game; the **pack** is the code and shader data the runtime needs
 next to it (`files/packs/01006A800016E000/`). It is built from the game with
 Peanuts Native's **Prepare** (on a computer or on the phone), and it is not
-distributed here. Put your pack in `files/packs/01006A800016E000/`, or ship your
-own build with `assets/smash/pack.zip`, which the app copies on first start.
+distributed here.
+
+The app's **PACK** card imports a `.zip` of that folder — `pack.tsv` at the root,
+so zip the folder's contents, not the folder itself — and extracts it into
+`files/packs/01006A800016E000/`; the card shows **Ready** once it is in place. A
+build of your own can also carry `assets/smash/pack.zip`, which the app copies on
+first start.
 
 ## Tested on
 
